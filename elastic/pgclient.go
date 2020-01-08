@@ -107,8 +107,9 @@ func (client *PGClient) execInsert(request *BulkRequest, tx *sql.Tx) (err error)
 	var i = 1
 	//组装插入数据
 	for key, value := range request.Data {
-		columns = append(columns, key)
+		columns = append(columns, "\""+strings.ToLower(key)+"\"")
 		values = append(values, value)
+
 		valuePlaceholders = append(valuePlaceholders, "$"+strconv.Itoa(i))
 		i++
 	}
@@ -121,6 +122,7 @@ func (client *PGClient) execInsert(request *BulkRequest, tx *sql.Tx) (err error)
 	} else {
 		stmt, err = client.db.Prepare(insertSql)
 	}
+	log.Infof("sql:%v %v", insertSql, values)
 
 	if err != nil {
 		return errors.Trace(err)
@@ -141,7 +143,7 @@ func (client *PGClient) execDelete(request *BulkRequest, tx *sql.Tx) (err error)
 	whereValues := make([]interface{}, 0, len(request.PKData))
 	var i = 1
 	for key, value := range request.PKData {
-		whereExps = append(whereExps, key+"=$"+strconv.Itoa(i))
+		whereExps = append(whereExps, "\""+strings.ToLower(key)+"\""+"=$"+strconv.Itoa(i))
 		whereValues = append(whereValues, value)
 		i++
 	}
@@ -152,9 +154,13 @@ func (client *PGClient) execDelete(request *BulkRequest, tx *sql.Tx) (err error)
 	} else {
 		stmt, err = client.db.Prepare(deleteSql)
 	}
+
+	log.Infof("sql:%v %v", deleteSql, whereValues)
+
 	if err != nil {
 		return errors.Trace(err)
 	}
+
 	defer stmt.Close()
 	_, err = stmt.Exec(whereValues...)
 	if err != nil {
@@ -172,13 +178,13 @@ func (client *PGClient) execUpdate(request *BulkRequest, tx *sql.Tx) (err error)
 	var i = 1
 	//组装更新数据
 	for key, value := range request.Data {
-		setExps = append(setExps, key+"=$"+strconv.Itoa(i))
+		setExps = append(setExps, "\""+strings.ToLower(key)+"\""+"=$"+strconv.Itoa(i))
 		values = append(values, value)
 		i++
 	}
 	//组装条件数据（主键）
 	for key, value := range request.PKData {
-		whereExps = append(whereExps, key+"=$"+strconv.Itoa(i))
+		whereExps = append(whereExps, "\""+strings.ToLower(key)+"\""+"=$"+strconv.Itoa(i))
 		values = append(values, value)
 		i++
 	}
@@ -192,6 +198,9 @@ func (client *PGClient) execUpdate(request *BulkRequest, tx *sql.Tx) (err error)
 	} else {
 		stmt, err = client.db.Prepare(updateSql)
 	}
+
+	log.Infof("sql:%v %v", updateSql, values)
+
 	if err != nil {
 		return errors.Trace(err)
 	}
